@@ -1,4 +1,4 @@
-"""Helper functions for the myrientdownload package."""
+"""Helper functions for the myrient_download package."""
 
 import time
 

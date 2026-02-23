@@ -1,5 +1,5 @@
 [project]
-name = "myrientdownload"
+name = "myrient-download"
 version = "1.2.0"
 description = "Download .zips from Myrient via HTTPS"
 authors = [
@@ -44,10 +44,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["myrientdownload"]
+packages = ["myrient_download"]
 
 [project.scripts]
-myrient-download = "myrientdownload.__main__:main"
+myrient-download = "myrient_download.__main__:main"
 
 [project.urls]
 "Homepage" = "https://github.com/TuckerWarlock/myrient-download"
@@ -92,7 +92,7 @@ docstring-code-line-length = 40
 [tool.pytest.ini_options]
 addopts = [
     "--cov-context=test",
-    "--cov=myrientdownload",
+    "--cov=myrient_download",
     "--cov-report=term",
     "--cov-report=html",
     "--ignore=tests/test_gui.py",
@@ -103,7 +103,7 @@ testpaths = ["tests"]
 show_contexts = true
 
 [tool.mypy]
-files = ["myrientdownload"]
+files = ["myrient_download"]
 namespace_packages = true
 explicit_package_bases = true
 show_error_codes = true
