@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
@@ -46,6 +44,13 @@ class MyrientGUI:
 
         self._build_ui()
         self._populate_from_config(dl)
+
+        # Center window on screen after layout is complete
+        self._root.update_idletasks()
+        w, h = self._root.winfo_reqwidth(), self._root.winfo_reqheight()
+        x = (self._root.winfo_screenwidth() - w) // 2
+        y = (self._root.winfo_screenheight() - h) // 2
+        self._root.geometry(f"+{x}+{y}")
 
     # ── UI construction ────────────────────────────────────────────────
 
@@ -243,36 +248,10 @@ class MyrientGUI:
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
         self._root.destroy()
-        _launch_in_terminal(config_path, config.download_dir)
 
     def run(self) -> None:
         """Start the Tkinter event loop."""
         self._root.mainloop()
-
-
-def _launch_in_terminal(config_path: Path, download_dir: Path) -> None:
-    """Open a terminal running the downloader and reveal the download dir."""
-    cmd = f'"{sys.executable}" -m myrient_download --config "{config_path}"'
-
-    if sys.platform == "darwin":
-        script = f'tell application "Terminal" to do script "{cmd}"'
-        subprocess.Popen(["osascript", "-e", script])  # noqa: S603
-        download_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.Popen(["open", str(download_dir)])  # noqa: S603
-
-    elif sys.platform == "win32":
-        subprocess.Popen(["cmd", "/c", f"start cmd /k {cmd}"], shell=True)  # noqa: S602,S603
-        subprocess.Popen(["explorer", str(download_dir)])  # noqa: S603
-
-    else:
-        # Linux: try common terminal emulators in order of preference
-        for term, sep in [("gnome-terminal", "--"), ("konsole", "-e"), ("xterm", "-e")]:
-            try:
-                subprocess.Popen([term, sep, "bash", "-c", f"{cmd}; exec bash"])  # noqa: S603
-                break
-            except FileNotFoundError:
-                continue
-        subprocess.Popen(["xdg-open", str(download_dir)])  # noqa: S603
 
 
 def launch_gui(config_path: Path | None = None) -> None:
