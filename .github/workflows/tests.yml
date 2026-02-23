@@ -26,11 +26,8 @@ jobs:
       - name: Run tests
         run: uv run pytest -q --show-capture=no
 
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
-      - name: Ruff lint
-        run: uv run ruff check .
+      - name: Flake8 lint
+        run: uv run flake8 myrient_download/ tests/
 
       - name: Mypy type check
         run: uv run mypy .

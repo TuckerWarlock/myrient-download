@@ -112,7 +112,6 @@ class MyrDownloader(BaseModel):
         self.stats.print_stats()
         logger.info("Download complete!")
 
-
     async def _fetch_file_lists(
         self, session: aiohttp.ClientSession
     ) -> tuple[list[_SystemContext], list[list[str]]]:

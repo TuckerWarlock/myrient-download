@@ -1,10 +1,10 @@
 """Main entry point for CLI."""
 
-from __future__ import annotations
-
 import argparse
 import asyncio
+from collections.abc import Coroutine
 from pathlib import Path
+from typing import Any
 
 from . import DESCRIPTION, PROGRAM_NAME, __version__
 from .config import MyrDLConfig
@@ -17,13 +17,13 @@ logger = get_logger(__name__)
 try:
     import uvloop as _uvloop
 
-    def _run(coro: asyncio.Coroutine[object, object, None]) -> None:
+    def _run(coro: Coroutine[Any, Any, None]) -> None:
         """Run coroutine with uvloop."""
         asyncio.set_event_loop_policy(_uvloop.EventLoopPolicy())
         asyncio.run(coro)
 
 except ImportError:
-    def _run(coro: asyncio.Coroutine[object, object, None]) -> None:  # type: ignore[misc]
+    def _run(coro: Coroutine[Any, Any, None]) -> None:
         """Run coroutine with default asyncio."""
         asyncio.run(coro)
 
@@ -52,7 +52,7 @@ def main() -> None:
     config_path = Path(args.config).expanduser().resolve()
 
     if args.gui:
-        from .gui import launch_gui
+        from .gui import launch_gui  # type: ignore[import-untyped]  # noqa: PLC0415
         launch_gui(config_path)
         return
 
