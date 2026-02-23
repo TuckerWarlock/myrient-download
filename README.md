@@ -28,7 +28,7 @@ uv sync
 ### GUI (recommended for first-time setup)
 
 ```bash
-myrient-download --gui --config config.toml
+uv run myrient-download --gui --config config.toml
 ```
 
 Opens a desktop window where you can:
@@ -41,7 +41,7 @@ Opens a desktop window where you can:
 ### CLI
 
 ```bash
-myrient-download --config config.toml
+uv run myrient-download --config config.toml
 ```
 
 ```

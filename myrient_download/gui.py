@@ -11,6 +11,8 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from .config import MyrDLConfig, MyrDLDownloaderConfig
 from .constants import KNOWN_SYSTEMS
 
+_LOGO = Path(__file__).parent / "logo.png"
+
 
 class MyrientGUI:
     """Main application window for configuring and launching downloads."""
@@ -22,7 +24,15 @@ class MyrientGUI:
 
         self._root = tk.Tk()
         self._root.title("Myrient Downloader")
-        self._root.minsize(600, 500)
+        self._root.resizable(False, False)
+
+        # Window icon (PNG bundled alongside this module)
+        if _LOGO.exists():
+            try:
+                self._icon = tk.PhotoImage(file=_LOGO)
+                self._root.wm_iconphoto(True, self._icon)
+            except tk.TclError:
+                pass
 
         self._config_path_var = tk.StringVar(value=str(config_path))
         self._download_dir_var = tk.StringVar(value=str(self._config.download_dir))
@@ -43,25 +53,10 @@ class MyrientGUI:
         """Build all widgets."""
         root = self._root
         root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
 
-        canvas = tk.Canvas(root, borderwidth=0)
-        scrollbar = ttk.Scrollbar(root, orient="vertical", command=canvas.yview)
-        self._scroll_frame = ttk.Frame(canvas)
-
-        self._scroll_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
-        )
-        canvas.create_window((0, 0), window=self._scroll_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-
-        outer = self._scroll_frame
+        outer = ttk.Frame(root, padding=10)
+        outer.grid(sticky="nsew")
         outer.columnconfigure(0, weight=1)
-
         row = 0
 
         # Config file path
@@ -99,7 +94,6 @@ class MyrientGUI:
         ttk.Separator(outer, orient="horizontal").grid(row=row, column=0, sticky="ew", pady=6, padx=10)
         row += 1
 
-        # Downloader settings header
         ttk.Label(outer, text="Downloader Settings", font=("", 10, "bold")).grid(
             row=row, column=0, sticky="w", padx=10, pady=4
         )
@@ -229,7 +223,7 @@ class MyrientGUI:
         )
 
     def _save_config(self) -> None:
-        """Validate the form and write the config file."""
+        """Validate the form, write the config file, and close the window."""
         try:
             config = self._read_form()
         except Exception as exc:  # noqa: BLE001
@@ -237,10 +231,10 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
-        messagebox.showinfo("Saved", f"Config saved to:\n{config_path}")
+        self._root.destroy()
 
     def _save_and_download(self) -> None:
-        """Save the config then launch the downloader subprocess."""
+        """Save config, close the window, open a terminal, and reveal the download dir."""
         try:
             config = self._read_form()
         except Exception as exc:  # noqa: BLE001
@@ -248,15 +242,37 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
-        subprocess.Popen(  # noqa: S603
-            [sys.executable, "-m", "myrient_download", "--config", str(config_path)],
-            close_fds=True,
-        )
-        messagebox.showinfo("Download started", "Download launched in a terminal.\nClose this window if desired.")
+        self._root.destroy()
+        _launch_in_terminal(config_path, config.download_dir)
 
     def run(self) -> None:
         """Start the Tkinter event loop."""
         self._root.mainloop()
+
+
+def _launch_in_terminal(config_path: Path, download_dir: Path) -> None:
+    """Open a terminal running the downloader and reveal the download dir."""
+    cmd = f'"{sys.executable}" -m myrient_download --config "{config_path}"'
+
+    if sys.platform == "darwin":
+        script = f'tell application "Terminal" to do script "{cmd}"'
+        subprocess.Popen(["osascript", "-e", script])  # noqa: S603
+        download_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.Popen(["open", str(download_dir)])  # noqa: S603
+
+    elif sys.platform == "win32":
+        subprocess.Popen(["cmd", "/c", f"start cmd /k {cmd}"], shell=True)  # noqa: S602,S603
+        subprocess.Popen(["explorer", str(download_dir)])  # noqa: S603
+
+    else:
+        # Linux: try common terminal emulators in order of preference
+        for term, sep in [("gnome-terminal", "--"), ("konsole", "-e"), ("xterm", "-e")]:
+            try:
+                subprocess.Popen([term, sep, "bash", "-c", f"{cmd}; exec bash"])  # noqa: S603
+                break
+            except FileNotFoundError:
+                continue
+        subprocess.Popen(["xdg-open", str(download_dir)])  # noqa: S603
 
 
 def launch_gui(config_path: Path | None = None) -> None:
