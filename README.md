@@ -6,6 +6,8 @@ Download ROM zip files from [Myrient](https://myrient.erista.me) via HTTPS with 
 
 Originally adapted from [myrient-rsync](https://github.com/secretx51/myrient-rsync). Further improvements synced from [kism/myrient-download](https://github.com/kism/myrient-download).
 
+![](docs/myrient_download_screenshot.png)
+
 ## Requirements
 
 - Python 3.14+
