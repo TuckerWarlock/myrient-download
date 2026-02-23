@@ -16,7 +16,7 @@ jobs:
 
       - name: Get Python version
         id: python-version
-        run: cat ~/.python-version >> $GITHUB_OUTPUT
+        run: echo "python-version=$(cat .python-version)" >> $GITHUB_OUTPUT
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
