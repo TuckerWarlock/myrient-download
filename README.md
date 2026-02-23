@@ -1,82 +1,126 @@
 # Myrient ROM Downloader
 
-Adaptation of this repo: https://github.com/secretx51/myrient-rsync
+[![PR Checks](https://github.com/TuckerWarlock/myrient-download/actions/workflows/tests.yml/badge.svg)](https://github.com/TuckerWarlock/myrient-download/actions/workflows/tests.yml)
 
-A Python script to download ROM files from Myrient's collection. The script allows you to specify multiple systems and filter games based on region, type, and other criteria.
+Download ROM zip files from [Myrient](https://myrient.erista.me) via HTTPS with filtering, concurrent downloads, and a GUI config editor.
 
-## Prerequisites
+Originally adapted from [myrient-rsync](https://github.com/secretx51/myrient-rsync). Further improvements synced from [kism/myrient-download](https://github.com/kism/myrient-download).
 
-- Python 3.12+
+## Requirements
 
-Install dependencies using:
+- Python 3.14+
+- [uv](https://docs.astral.sh/uv/) (package manager)
+
+## Installation
+
 ```bash
-pip install -r requirements.txt
+# Install as a tool (recommended)
+uv tool install git+https://github.com/TuckerWarlock/myrient-download
+
+# Or clone and run locally
+git clone https://github.com/TuckerWarlock/myrient-download
+cd myrient-download
+uv sync
+```
+
+## Usage
+
+### GUI (recommended for first-time setup)
+
+```bash
+myrient-download --gui --config config.toml
+```
+
+Opens a desktop window where you can:
+- Pick your download directory
+- Select systems from a grouped checklist (No-Intro / Redump)
+- Set game allow/disallow filters
+- Toggle options like ZIP verification and directory structure
+- Save the config and launch a download — all without touching a file
+
+### CLI
+
+```bash
+myrient-download --config config.toml
+```
+
+```
+options:
+  --config PATH       Path to config file (default: config.toml)
+  --directory PATH    Override the download directory
+  --log-level LEVEL   Logging verbosity: TRACE, DEBUG, INFO, WARNING, ERROR (default: INFO)
+  --gui               Launch the graphical config editor
 ```
 
 ## Configuration
 
-Configure the script by modifying these variables at the top:
+Config is stored as a TOML file. Run with `--gui` to generate one interactively, or create it manually:
 
-```python
-MYRIENT_URL = ''
-DOWNLOAD_DIR = r'\\SERVER-NAME\Share Path'  # Use raw string for network paths
-EXTRACT_ZIP = False  # Keep files as zips
-SKIP_EXISTING = True  # Skip files that already exist
-SYSTEMS = [  # Specify systems to download
-    "Atari 7800",
-    "Video CD"
+```toml
+download_dir = "/home/user/roms"
+create_and_use_system_directories = true
+create_and_use_database_directories = false
+
+[[myrient_downloader]]
+myrient_url = "https://myrient.erista.me/files"
+myrient_path = "No-Intro"          # or "Redump"
+verify_existing_zips = false
+
+systems = [
+    "Nintendo - Nintendo Entertainment System (Headered)",
+    "Nintendo - Super Nintendo Entertainment System",
 ]
-GAME_WHITELIST = ["(USA)"]  # Only download USA games
-GAME_BLACKLIST = ["Demo", "BIOS", "(Proto)", "(Beta)", "(Program)"]  # Skip these
+
+game_allow_list  = ["(USA)"]
+game_disallow_list = ["Demo", "BIOS", "(Proto)", "(Beta)", "(Program)"]
 ```
 
-### Available Options:
+### Options
 
-- `SYSTEMS`: List of systems to download. Leave empty to use whitelist/blacklist
-- `DOWNLOAD_DIR`: Directory for downloads (supports network paths)
-- `EXTRACT_ZIP`: Whether to extract zip files after download (default: False)
-- `SKIP_EXISTING`: Skip files that already exist (default: True)
-- `GAME_WHITELIST`: Only download games containing these terms
-- `GAME_BLACKLIST`: Skip games containing these terms
+| Key | Default | Description |
+|---|---|---|
+| `download_dir` | `./output` | Where files are saved |
+| `create_and_use_system_directories` | `true` | Organise into per-system folders |
+| `create_and_use_database_directories` | `false` | Add a No-Intro / Redump parent folder |
+| `myrient_path` | `No-Intro` | Database to download from |
+| `systems` | NES + SNES | List of system names (must match Myrient exactly) |
+| `game_allow_list` | `["(USA)"]` | Only download files containing any of these strings |
+| `game_disallow_list` | `["Demo", …]` | Skip files containing any of these strings |
+| `verify_existing_zips` | `false` | Re-verify already-downloaded ZIPs before skipping |
 
-## Usage
+## Output Structure
 
-1. Configure the variables as needed
-2. Run the script:
-```bash
-python myrient_downloader.py
 ```
-
-The script will:
-1. Create system-specific folders in your download directory
-2. Download matching games for each system
-3. Show progress bars for downloads
-4. Skip existing files if enabled
-
-## Example Directory Structure
-
-For the configuration shown above, files will be organized as:
-```
-Share Path/
-├── Atari - 7800/
-│   └── Dark Chambers (USA).zip
-└── Video CD/
-    └── Club iKTV 02 (USA).zip
+roms/
+├── Nintendo - Nintendo Entertainment System (Headered)/
+│   ├── Contra (USA).zip
+│   └── Mega Man 2 (USA).zip
+└── Nintendo - Super Nintendo Entertainment System/
+    ├── Chrono Trigger (USA).zip
+    └── Super Metroid (USA, Europe).zip
 ```
 
 ## Features
 
-- Downloads directly from Myrient's servers
-- Supports multiple systems in one run
-- Creates organized folder structure
-- Shows download progress
-- Skips existing files
-- Handles network paths
-- Keeps original zip files intact
+- **Async downloads** — 3 concurrent workers for faster throughput
+- **Safe writes** — files download to `.part` then rename on success; leftover partials are cleaned up on start
+- **Retry logic** — up to 3 attempts per file on connection errors
+- **ZIP verification** — optional integrity check with automatic removal of corrupt files
+- **Coloured logging** — clear terminal output with custom TRACE level and rotating file logs
+- **Config auto-backup** — if validation changes your config, the original is saved as `.bak`
 
-## Notes
+## Development
 
-- The script downloads files in zip format
-- Most emulators can read ROMs directly from zip files
-- Network paths should use raw strings (r"\\SERVER\Share")
-- Files are organized by system automatically
+```bash
+uv sync                          # install all deps including dev groups
+uv run pytest -q                 # run tests
+uv run flake8 myrient_download/ tests/
+uv run mypy myrient_download/
+./scripts/run_ci_local.sh        # run everything in one shot
+```
+
+GUI tests require a display and are excluded from the default run:
+
+```bash
+uv run pytest tests/test_gui.py -v
+```
