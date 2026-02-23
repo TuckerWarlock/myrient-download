@@ -9,7 +9,7 @@ from typing import Any
 from . import DESCRIPTION, PROGRAM_NAME, __version__
 from .config import MyrDLConfig
 from .logger import get_logger, setup_logger
-from .myr_download import MyrDownloader
+from .download import MyrDownloader
 
 setup_logger()
 logger = get_logger(__name__)

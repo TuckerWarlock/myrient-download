@@ -1,4 +1,4 @@
-from myrient_download.myr_download import MyrDownloader
+from myrient_download.download import MyrDownloader
 
 
 def test_myr_downloader_init(myr_default_config):

@@ -16,7 +16,7 @@ from tqdm import tqdm
 from .config import MyrDLConfig, MyrDLDownloaderConfig
 from .constants import FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT
 from .logger import get_logger
-from .myr_files import get_files_list
+from .files import get_files_list
 
 logger = get_logger(__name__)
 
