@@ -52,7 +52,7 @@ def main() -> None:
     config_path = Path(args.config).expanduser().resolve()
 
     if args.gui:
-        from .gui import launch_gui  # type: ignore[import-untyped]  # noqa: PLC0415
+        from .gui import launch_gui  # noqa: PLC0415
         launch_gui(config_path)
         return
 
