@@ -1,0 +1,11 @@
+download_dir = "/tmp/myrient-test-output"
+create_and_use_system_directories = true
+create_and_use_database_directories = false
+[[myrient_downloader]]
+myrient_url = "https://myrient.erista.me/files"
+myrient_path = "Redump"
+verify_existing_zips = true
+systems = []
+system_disallow_list = []
+game_allow_list = ["(USA)"]
+game_disallow_list = ["Demo", "BIOS", "(Proto)", "(Beta)", "(Program)"]
