@@ -19,7 +19,6 @@ class MyrientGUI:
         """Initialize GUI, load config from path."""
         self._config_path = config_path
         self._config = MyrDLConfig.load_config(config_path)
-        self._should_download = False
 
         self._root = tk.Tk()
         self._root.title("Myrient Downloader")
@@ -152,7 +151,6 @@ class MyrientGUI:
         btn = ttk.Frame(outer)
         btn.grid(row=row, column=0, sticky="e", padx=10, pady=(0, 12))
         ttk.Button(btn, text="Save Config", command=self._save_config).grid(row=0, column=0, padx=(0, 6))
-        ttk.Button(btn, text="Save & Download", command=self._save_and_download).grid(row=0, column=1)
 
     def _build_system_checkboxes(self) -> None:
         """Rebuild the systems checklist from the current database selection."""
@@ -237,28 +235,17 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
-        self._should_download = False
-        self._root.destroy()
+        cmd = f"uv run myrient-download --config {config_path}"
+        msg = f"Configuration saved to {config_path}\n\nTo start downloading, run:\n{cmd}"
+        messagebox.showinfo("Config Saved", msg)
+        self._root.quit()
 
-    def _save_and_download(self) -> None:
-        """Save config, close the window, and signal to start download."""
-        try:
-            config = self._read_form()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Validation Error", str(exc))
-            return
-        config_path = Path(self._config_path_var.get())
-        config.write_config(config_path)
-        self._should_download = True
-        self._root.destroy()
-
-    def run(self) -> bool:
-        """Start the Tkinter event loop and return whether download should proceed."""
+    def run(self) -> None:
+        """Start the Tkinter event loop."""
         self._root.mainloop()
-        return self._should_download
 
 
-def launch_gui(config_path: Path | None = None) -> bool:
-    """Entry point to launch the GUI. Returns True if user chose to download."""
+def launch_gui(config_path: Path | None = None) -> None:
+    """Entry point to launch the GUI."""
     resolved = (config_path or Path("config.toml")).expanduser().resolve()
-    return MyrientGUI(resolved).run()
+    MyrientGUI(resolved).run()

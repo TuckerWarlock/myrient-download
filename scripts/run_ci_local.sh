@@ -3,9 +3,11 @@
 MAGENTA='\033[0;35m'
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 echo_magenta() { echo; echo -e "--- ${MAGENTA}$1${NC} ---"; }
+echo_cyan() { echo; echo -e "--- ${CYAN}$1${NC} ---"; }
 
 if [ "$(dirname "$0")" == "." ]; then
     cd ..
@@ -19,7 +21,7 @@ check_return() {
 echo "Running code checks locally"
 uv sync
 
-echo_magenta "Pytest"
+echo_magenta "Pytest (unit tests)"
 uv run pytest -q --show-capture=no
 check_return $?
 
@@ -30,3 +32,14 @@ check_return $?
 echo_magenta "Mypy"
 uv run mypy myrient_download/
 check_return $?
+
+# Integration tests - download real ROMs from Myrient
+if [ "$1" == "--with-integration" ]; then
+    echo_cyan "Integration Tests (downloading from Myrient)"
+    echo "Running integration tests. This will download small ROM files for testing."
+    uv run pytest tests/test_download_integration.py -v --tb=short
+    check_return $?
+else
+    echo_cyan "Integration Tests Skipped"
+    echo "To run integration tests (downloads real files), use: ./scripts/run_ci_local.sh --with-integration"
+fi

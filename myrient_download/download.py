@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 init()
 
-NUM_WORKERS = 3
+NUM_WORKERS = 1
 
 
 @dataclass
@@ -239,9 +239,10 @@ class MyrDownloader(BaseModel):
 
         for attempt in range(3):
             try:
+                download_timeout: float | None = task.myr_downloader.download_timeout_seconds or None
                 if await asyncio.wait_for(
                     self._download_file(session, file_url, output_file, task.base_url, worker_id=worker_id),
-                    timeout=REQUESTS_TIMEOUT + 300,
+                    timeout=download_timeout,
                 ):
                     self.stats.report_downloaded()
                     break
@@ -252,8 +253,9 @@ class MyrDownloader(BaseModel):
                 self.stats.report_failed()
                 continue
             if attempt != 2:
-                await asyncio.sleep(5)
-                logger.warning("Retrying download for %s", task.file_name)
+                backoff_seconds = 5 * (2 ** attempt)  # 5s, 10s, 20s
+                await asyncio.sleep(backoff_seconds)
+                logger.warning("Retrying download for %s (waiting %ds)", task.file_name, backoff_seconds)
         else:
             if not output_file.exists():
                 logger.warning("NOT downloaded: %s", task.file_name)
@@ -332,12 +334,13 @@ class MyrDownloader(BaseModel):
     def _calculate_verification_timeout(self, file_path: Path) -> float:
         """Calculate ZIP verification timeout based on file size.
 
-        Formula: Base 20 seconds + 1 second per MB
-        Examples: 100MB = 120s, 500MB = 520s
+        Formula: Base 120 seconds + 3 seconds per MB
+        Examples: 3.2MB = 129.6s, 100MB = 420s, 500MB = 1620s
+        Accounts for slow connections and Myrient rate limiting.
         """
         try:
             file_size_mb = file_path.stat().st_size / (1024 * 1024)
-            return 20 + file_size_mb
+            return 120 + (file_size_mb * 3)
         except (OSError, ValueError):
             return ZIP_VERIFICATION_TIMEOUT
 
