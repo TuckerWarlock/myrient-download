@@ -2,6 +2,8 @@
 
 import argparse
 import asyncio
+import subprocess
+import sys
 from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any
@@ -51,9 +53,20 @@ def main() -> None:
 
     config_path = Path(args.config).expanduser().resolve()
 
+    should_download = True
     if args.gui:
         from .gui import launch_gui  # noqa: PLC0415
-        launch_gui(config_path)
+        should_download = launch_gui(config_path)
+
+    if not should_download:
+        return
+
+    # If GUI was used, launch download in subprocess so GUI can close cleanly
+    if args.gui:
+        subprocess.Popen(
+            [sys.executable, "-m", "myrient_download", "--config", str(config_path), "--log-level", args.log_level],
+        )
+        return
 
     config = MyrDLConfig.load_config(config_path)
     if args.directory:

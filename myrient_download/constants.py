@@ -5,6 +5,7 @@ HTTP_HEADERS = {
 }
 
 REQUESTS_TIMEOUT = 20  # Yep, it can be slow
+ZIP_VERIFICATION_TIMEOUT = 60  # Timeout for ZIP file verification in seconds
 
 FUN_TQDM_LOADING_BAR = " ▖▘▝▗▚▞█"
 

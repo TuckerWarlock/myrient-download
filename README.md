@@ -38,7 +38,10 @@ Opens a desktop window where you can:
 - Select systems from a grouped checklist (No-Intro / Redump)
 - Set game allow/disallow filters
 - Toggle options like ZIP verification and directory structure
-- Save the config and launch a download — all without touching a file
+
+Two buttons at the bottom:
+- **Save Config** — saves your configuration and closes the GUI (no download)
+- **Save & Download** — saves your configuration, closes the GUI, and launches downloads in the background
 
 ### CLI
 
@@ -102,12 +105,25 @@ roms/
     └── Super Metroid (USA, Europe).zip
 ```
 
+## Resuming Downloads
+
+You can safely run the downloader multiple times on the same directory:
+- **Existing files** are automatically skipped (logged as "already exists")
+- **Existing folders** are reused (no errors or overwrites)
+- **Partial files** (`.part`) are cleaned up at startup
+- Use `verify_existing_zips: true` to verify existing downloads before skipping them
+
+This makes it easy to resume interrupted downloads or add new systems to your collection.
+
 ## Features
 
 - **Async downloads** — 3 concurrent workers for faster throughput
 - **Safe writes** — files download to `.part` then rename on success; leftover partials are cleaned up on start
-- **Retry logic** — up to 3 attempts per file on connection errors
-- **ZIP verification** — optional integrity check with automatic removal of corrupt files
+- **Retry logic** — up to 3 attempts per file on connection errors with 5-second backoff
+- **Download timeout protection** — files that hang are skipped after ~5 minutes; partial files cleaned up automatically
+- **Smart ZIP verification** — optional integrity check with automatic removal of corrupt files; timeout scales with file size (20s base + 1s per MB)
+- **GUI workflow** — interactive config editor that closes cleanly and launches downloads in background
+- **Safe resume** — run multiple times safely; skips existing files, reuses existing folders
 - **Coloured logging** — clear terminal output with custom TRACE level and rotating file logs
 - **Config auto-backup** — if validation changes your config, the original is saved as `.bak`
 

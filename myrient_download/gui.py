@@ -19,6 +19,7 @@ class MyrientGUI:
         """Initialize GUI, load config from path."""
         self._config_path = config_path
         self._config = MyrDLConfig.load_config(config_path)
+        self._should_download = False
 
         self._root = tk.Tk()
         self._root.title("Myrient Downloader")
@@ -236,10 +237,11 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
+        self._should_download = False
         self._root.destroy()
 
     def _save_and_download(self) -> None:
-        """Save config, close the window, open a terminal, and reveal the download dir."""
+        """Save config, close the window, and signal to start download."""
         try:
             config = self._read_form()
         except Exception as exc:  # noqa: BLE001
@@ -247,14 +249,16 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
+        self._should_download = True
         self._root.destroy()
 
-    def run(self) -> None:
-        """Start the Tkinter event loop."""
+    def run(self) -> bool:
+        """Start the Tkinter event loop and return whether download should proceed."""
         self._root.mainloop()
+        return self._should_download
 
 
-def launch_gui(config_path: Path | None = None) -> None:
-    """Entry point to launch the GUI."""
+def launch_gui(config_path: Path | None = None) -> bool:
+    """Entry point to launch the GUI. Returns True if user chose to download."""
     resolved = (config_path or Path("config.toml")).expanduser().resolve()
-    MyrientGUI(resolved).run()
+    return MyrientGUI(resolved).run()

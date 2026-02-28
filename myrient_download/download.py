@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 from tqdm import tqdm
 
 from .config import MyrDLConfig, MyrDLDownloaderConfig
-from .constants import FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT
+from .constants import FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT, ZIP_VERIFICATION_TIMEOUT
 from .logger import get_logger
 from .files import get_files_list
 
@@ -212,7 +212,15 @@ class MyrDownloader(BaseModel):
         output_file = download_dir / task.file_name
 
         if task.myr_downloader.verify_existing_zips and output_file.is_file():
-            await asyncio.get_event_loop().run_in_executor(None, self._check_zip_file, output_file)
+            try:
+                timeout = self._calculate_verification_timeout(output_file)
+                await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(None, self._check_zip_file, output_file),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("ZIP verification timeout: %s (removing file)", output_file)
+                output_file.unlink()
 
         if output_file.exists():
             logger.debug("Skipping %s - already exists", task.file_name)
@@ -230,17 +238,39 @@ class MyrDownloader(BaseModel):
         logger.debug("Downloading %s to: %s", file_url, output_file)
 
         for attempt in range(3):
-            if await self._download_file(session, file_url, output_file, task.base_url, worker_id=worker_id):
-                self.stats.report_downloaded()
-                break
-            if attempt != 0:
+            try:
+                if await asyncio.wait_for(
+                    self._download_file(session, file_url, output_file, task.base_url, worker_id=worker_id),
+                    timeout=REQUESTS_TIMEOUT + 300,
+                ):
+                    self.stats.report_downloaded()
+                    break
+            except asyncio.TimeoutError:
+                logger.warning("Download timeout for %s", task.file_name)
+                if output_file.with_suffix(".part").exists():
+                    output_file.with_suffix(".part").unlink()
+                self.stats.report_failed()
+                continue
+            if attempt != 2:
                 await asyncio.sleep(5)
                 logger.warning("Retrying download for %s", task.file_name)
+        else:
+            if not output_file.exists():
+                logger.warning("NOT downloaded: %s", task.file_name)
 
         if output_file.exists():
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: self._check_zip_file(output_file, print_verification=True)
-            )
+            try:
+                timeout = self._calculate_verification_timeout(output_file)
+                await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(
+                        None, lambda: self._check_zip_file(output_file, print_verification=True)
+                    ),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError:
+                logger.warning("ZIP verification timeout: %s (removing file)", output_file)
+                output_file.unlink()
+                self.stats.report_failed()
 
     async def _download_file(
         self,
@@ -298,6 +328,18 @@ class MyrDownloader(BaseModel):
             return False
 
         return True
+
+    def _calculate_verification_timeout(self, file_path: Path) -> float:
+        """Calculate ZIP verification timeout based on file size.
+
+        Formula: Base 20 seconds + 1 second per MB
+        Examples: 100MB = 120s, 500MB = 520s
+        """
+        try:
+            file_size_mb = file_path.stat().st_size / (1024 * 1024)
+            return 20 + file_size_mb
+        except (OSError, ValueError):
+            return ZIP_VERIFICATION_TIMEOUT
 
     def _get_download_dir(self, system: str, myrient_path: str) -> Path:
         """Get the download directory based on the configuration and system."""
