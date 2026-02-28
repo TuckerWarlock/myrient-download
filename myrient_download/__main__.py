@@ -63,8 +63,9 @@ def main() -> None:
 
     # If GUI was used, launch download in subprocess so GUI can close cleanly
     if args.gui:
-        subprocess.Popen(
+        subprocess.run(
             [sys.executable, "-m", "myrient_download", "--config", str(config_path), "--log-level", args.log_level],
+            check=False,
         )
         return
 

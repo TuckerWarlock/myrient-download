@@ -43,6 +43,8 @@ Two buttons at the bottom:
 - **Save Config** — saves your configuration and closes the GUI (no download)
 - **Save & Download** — saves your configuration, closes the GUI, and launches downloads in the background
 
+After clicking **Save & Download**, the GUI closes and download progress is shown in the terminal. Press **Ctrl+C** to stop the download at any time.
+
 ### CLI
 
 ```bash
