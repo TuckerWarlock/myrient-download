@@ -151,7 +151,6 @@ class MyrientGUI:
         btn = ttk.Frame(outer)
         btn.grid(row=row, column=0, sticky="e", padx=10, pady=(0, 12))
         ttk.Button(btn, text="Save Config", command=self._save_config).grid(row=0, column=0, padx=(0, 6))
-        ttk.Button(btn, text="Save & Download", command=self._save_and_download).grid(row=0, column=1)
 
     def _build_system_checkboxes(self) -> None:
         """Rebuild the systems checklist from the current database selection."""
@@ -236,18 +235,10 @@ class MyrientGUI:
             return
         config_path = Path(self._config_path_var.get())
         config.write_config(config_path)
-        self._root.destroy()
-
-    def _save_and_download(self) -> None:
-        """Save config, close the window, open a terminal, and reveal the download dir."""
-        try:
-            config = self._read_form()
-        except Exception as exc:  # noqa: BLE001
-            messagebox.showerror("Validation Error", str(exc))
-            return
-        config_path = Path(self._config_path_var.get())
-        config.write_config(config_path)
-        self._root.destroy()
+        cmd = f"uv run myrient-download --config {config_path}"
+        msg = f"Configuration saved to {config_path}\n\nTo start downloading, run:\n{cmd}"
+        messagebox.showinfo("Config Saved", msg)
+        self._root.quit()
 
     def run(self) -> None:
         """Start the Tkinter event loop."""

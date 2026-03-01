@@ -54,6 +54,7 @@ def main() -> None:
     if args.gui:
         from .gui import launch_gui  # noqa: PLC0415
         launch_gui(config_path)
+        return
 
     config = MyrDLConfig.load_config(config_path)
     if args.directory:

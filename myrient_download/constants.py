@@ -4,7 +4,8 @@ HTTP_HEADERS = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # noqa: E501 # This line is just long
 }
 
-REQUESTS_TIMEOUT = 20  # Yep, it can be slow
+REQUESTS_TIMEOUT = 600  # Total timeout for HTTP requests (10 minutes, allows for slow Myrient)
+ZIP_VERIFICATION_TIMEOUT = 60  # Timeout for ZIP file verification in seconds
 
 FUN_TQDM_LOADING_BAR = " ▖▘▝▗▚▞█"
 
@@ -24,8 +25,9 @@ KNOWN_SYSTEMS: dict[str, list[str]] = {
         "Sega - Mega Drive - Genesis",
         "Sega - Saturn",
         "Sony - PlayStation Portable",
-        "Atari - 2600",
-        "Atari - 7800",
+        "Atari - Atari 2600",
+        "Atari - Atari 5200",
+        "Atari - Atari 7800 (BIN)",
         "NEC - PC Engine - TurboGrafx-16",
         "SNK - Neo Geo Pocket Color",
     ],

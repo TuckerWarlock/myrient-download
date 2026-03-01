@@ -26,6 +26,7 @@ class MyrDLDownloaderConfig(BaseModel):
     myrient_url: str = "https://myrient.erista.me/files"
     myrient_path: str = "No-Intro"  # Database name, see the website
     verify_existing_zips: bool = False  # Check existing zips are valid before skipping
+    download_timeout_seconds: int | None = None  # Timeout per file download in seconds
     systems: list[str] = [
         "Nintendo - Nintendo Entertainment System (Headered)",
         "Nintendo - Super Nintendo Entertainment System",
@@ -99,7 +100,7 @@ Myrient Downloader {n + 1}:
         """Write the current settings to a TOML file."""
         config_location.parent.mkdir(parents=True, exist_ok=True)
 
-        config_data = json.loads(self.model_dump_json())  # This is how we make the object safe for tomlkit
+        config_data = json.loads(self.model_dump_json(exclude_none=True))  # tomlkit safe
         if not config_location.exists():
             logger.warning("Config file does not exist, creating it at %s", config_location)
             config_location.touch()
