@@ -15,7 +15,9 @@ from pydantic import BaseModel, Field, model_validator
 from tqdm import tqdm
 
 from .config import MyrDLConfig, MyrDLDownloaderConfig
-from .constants import FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT, SYSTEM_URL_OVERRIDES, ZIP_VERIFICATION_TIMEOUT
+from .constants import (
+    FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT, SYSTEM_URL_OVERRIDES, ZIP_VERIFICATION_TIMEOUT
+)
 from .logger import get_logger
 from .files import get_files_list
 
