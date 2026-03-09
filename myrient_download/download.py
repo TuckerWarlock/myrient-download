@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -167,8 +168,8 @@ class MyrDownloader(BaseModel):
             filtered_files = [
                 (name, size)
                 for name, size in files_list
-                if any(term in name for term in ctx.myr_downloader.game_allow_list)
-                and not any(term in name for term in ctx.myr_downloader.game_disallow_list)
+                if any(re.search(term, name) for term in ctx.myr_downloader.game_allow_list)
+                and not any(re.search(term, name) for term in ctx.myr_downloader.game_disallow_list)
             ]
 
             if filtered_files:
