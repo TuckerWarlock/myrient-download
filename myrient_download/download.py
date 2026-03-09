@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,7 +15,9 @@ from pydantic import BaseModel, Field, model_validator
 from tqdm import tqdm
 
 from .config import MyrDLConfig, MyrDLDownloaderConfig
-from .constants import FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT, ZIP_VERIFICATION_TIMEOUT
+from .constants import (
+    FUN_TQDM_LOADING_BAR, HTTP_HEADERS, REQUESTS_TIMEOUT, SYSTEM_URL_OVERRIDES, ZIP_VERIFICATION_TIMEOUT
+)
 from .logger import get_logger
 from .files import get_files_list
 
@@ -23,6 +26,16 @@ logger = get_logger(__name__)
 init()
 
 NUM_WORKERS = 1
+
+
+def _format_bytes(size: int) -> str:
+    """Format a byte count into a human-readable string."""
+    value = float(size)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if value < 1024:
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} TiB"
 
 
 @dataclass
@@ -114,27 +127,28 @@ class MyrDownloader(BaseModel):
 
     async def _fetch_file_lists(
         self, session: aiohttp.ClientSession
-    ) -> tuple[list[_SystemContext], list[list[str]]]:
+    ) -> tuple[list[_SystemContext], list[list[tuple[str, int]]]]:
         """Fetch file lists for all systems concurrently."""
         fetch_tasks = []
         system_contexts: list[_SystemContext] = []
 
         for myr_downloader in self.config.myrient_downloader:
             for system in myr_downloader.systems:
-                system_url = f"{myr_downloader.myrient_url}/{myr_downloader.myrient_path}/{system}/"
+                url_system = SYSTEM_URL_OVERRIDES.get(myr_downloader.myrient_path, {}).get(system, system)
+                system_url = f"{myr_downloader.myrient_url}/{myr_downloader.myrient_path}/{url_system}/"
                 fetch_tasks.append(get_files_list(session, system_url))
                 system_contexts.append(
                     _SystemContext(myr_downloader=myr_downloader, system=system, system_url=system_url)
                 )
 
-        all_file_lists: list[list[str]] = list(await asyncio.gather(*fetch_tasks))
+        all_file_lists: list[list[tuple[str, int]]] = list(await asyncio.gather(*fetch_tasks))
         return system_contexts, all_file_lists
 
     async def _download_files(
         self,
         session: aiohttp.ClientSession,
         system_contexts: list[_SystemContext],
-        all_file_lists: list[list[str]],
+        all_file_lists: list[list[tuple[str, int]]],
     ) -> None:
         """Build the download queue and drain it with workers."""
         # Clean up leftover .part files before starting workers
@@ -149,19 +163,27 @@ class MyrDownloader(BaseModel):
 
         queue: asyncio.Queue[_DownloadTask | None] = asyncio.Queue()
 
+        total_size = 0
         for ctx, files_list in zip(system_contexts, all_file_lists, strict=True):
             if ctx.myr_downloader.game_allow_list == []:
                 ctx.myr_downloader.game_allow_list = ["."]
             filtered_files = [
-                f
-                for f in files_list
-                if any(term in f for term in ctx.myr_downloader.game_allow_list)
-                and not any(term in f for term in ctx.myr_downloader.game_disallow_list)
+                (name, size)
+                for name, size in files_list
+                if any(re.search(term, name) for term in ctx.myr_downloader.game_allow_list)
+                and not any(re.search(term, name) for term in ctx.myr_downloader.game_disallow_list)
             ]
 
             if filtered_files:
-                logger.info("Found %d matching files for %s", len(filtered_files), ctx.system)
-                for file_name in filtered_files:
+                system_size = sum(size for _, size in filtered_files)
+                total_size += system_size
+                logger.info(
+                    "Found %d matching files for %s (%s)",
+                    len(filtered_files),
+                    ctx.system,
+                    _format_bytes(system_size),
+                )
+                for file_name, _ in filtered_files:
                     await queue.put(
                         _DownloadTask(
                             file_name=file_name,
@@ -173,6 +195,9 @@ class MyrDownloader(BaseModel):
                     )
             else:
                 logger.info("No matching files found for %s", ctx.system)
+
+        if total_size > 0:
+            logger.info("Total estimated download size: %s", _format_bytes(total_size))
 
         workers = [
             asyncio.create_task(self._download_worker(session, queue, worker_id=i)) for i in range(NUM_WORKERS)
